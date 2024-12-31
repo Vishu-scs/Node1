@@ -17,7 +17,7 @@ const router = Router()
 //     // ]),
 //     registerUser)
 
-router.route("/allUsers").get(allUsers)
+router.route("/getusers").get(allUsers)
 router.route("/register").post(registerUser)
 router.route("/login").post(loginUser)
 router.route("/change-password").post(verifyJwt,changePassword)

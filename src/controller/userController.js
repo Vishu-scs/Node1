@@ -7,6 +7,7 @@ import 'dotenv/config'
 import { getPool } from "../db/db.js"
 import { transporter} from "../utils/emailTransporter.js"
 
+
     
 const otps = {}
 const { isEmail , isStrongPassword } = validator
@@ -34,29 +35,49 @@ const { isEmail , isStrongPassword } = validator
 const registerUser = async (req, res) => {
     try {
       const pool = await getPool();
-        const { id, email, firstName, lastName, middleName, DOB, Contact, password } = req.body;
+        const { email, firstName, lastName, middleName, DOB, contact, password } = req.body;
 
-        if (!id || !email || !firstName || !lastName || !password) {
-            return res.status(400).json({ error: "Missing required fields" });
+        if ( !email || !firstName || !lastName || !password || !contact) {
+            return res.status(400).json({error:"Required missing fields"});
         }
-        const hashedPassword = await bcrypt.hash(password, 10);
+        //check user already exist or not
+        const checkQuery = `
+            SELECT COUNT(*) AS count 
+            FROM UserTable 
+            WHERE email = @Email OR contact = @Contact
+        `;
 
+        const checkResult = await pool
+            .request()
+            .input('Email', sql.NVarChar(255), email)
+            .input('Contact', sql.NVarChar(255), contact)
+            .query(checkQuery);
+
+        if (checkResult.recordset[0].count > 0) {
+            return res.status(400).json({success:"false", error: "User already exists with the provided email or contact" });
+        }
+
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+         // Convert DOB to YYYY-MM-DD format
+         const dobDate = new Date(DOB);
+         const formattedDOB = dobDate.toISOString().split('T')[0]; 
         // Parameterized query
         const query = `
-            INSERT INTO UserTable (id, firstName, middleName, lastName, DOB, email, contact, password)
-            VALUES (@id, @firstName, @middleName, @lastName, @DOB,@email, @contact, @password)
+            INSERT INTO UserTable (firstName, middleName, lastName, DOB, email, contact, password)
+            VALUES ( @firstName, @middleName, @lastName, @DOB,@email, @contact, @password)
         `;
 
         // Execute the query
         await pool
         .request()
-        .input('id', sql.Int, id)
+        // .input('id', sql.Int, id)
         .input('firstName', sql.VarChar(50), firstName)
         .input('middleName', sql.VarChar(50), middleName)
         .input('lastName', sql.VarChar(50), lastName)
-        .input('DOB', sql.Date, DOB)
+        .input('DOB', sql.Date, formattedDOB)
         .input('email', sql.VarChar(100), email)
-        .input('contact', sql.VarChar(15), Contact)
+        .input('contact', sql.VarChar(15), contact)
         .input('password', sql.VarChar(255), hashedPassword)
         .query(query);
         
@@ -66,10 +87,10 @@ const registerUser = async (req, res) => {
         
         // Check for specific errors, e.g., duplicate key violations
         if (error.code === 'EREQUEST') {
-          return res.status(400).json({ error: "Database error: likely a duplicate key or constraint violation" });
+          return res.status(400).json({ error: "Database error: likely a duplicate key or constraint violation",error });
         }
         
-        res.status(500).json({ error: "Error signing up" });
+        res.status(500).json({ error: "Error signing up",message:error.message });
       }
     };
     //--------------Login API
@@ -79,11 +100,11 @@ const loginUser = async (req, res) => {
     if(!isEmail(email)){
       res.status(400).json({message:"Enter a Valid Email"})
     }
-    if(!isStrongPassword(password)){
-      res.status(400).json({message:"Enter a Strong Password"})
-    }
+    // if(!isStrongPassword(password)){
+    //   res.status(400).json({message:"Enter a Strong Password"})
+    // }
    
-    console.log(req);
+    // console.log(req);
     
     const pool = await getPool();   //Helper Function 
     // Query the database for the user with the given username
@@ -114,6 +135,7 @@ const loginUser = async (req, res) => {
   } catch (error) {
     // console.error("Error logging in:", error);
     res.status(500).json({success:false, error: 'Unable to login' });
+    // console.log(error.message)
   } 
 };
 const verifyToken = async(req,res)=>{
