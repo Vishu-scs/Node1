@@ -93,7 +93,7 @@ const registerUser = async (req, res) => {
         res.status(500).json({ error: "Error signing up",message:error.message });
       }
     };
-    //--------------Login API
+//--------------Login API
 const loginUser = async (req, res) => {
   try {
     const {email,password} = req.body;
@@ -293,7 +293,6 @@ const verifyOTP = async(req,res)=>{
       res.status(500).json({ error: 'Unable to validate OTP.' });
     }
   }
-
 const resetPassword = async(req,res)=>{
 try {
       const {password,token} = req.body

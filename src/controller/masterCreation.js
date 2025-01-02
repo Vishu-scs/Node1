@@ -29,9 +29,35 @@ const getSchema = async(req,res)=>{
    }
 }
 const uploadExcel = async(req,res)=>{
-    const pool = getPool();
+   try {
+         // const pool = await getPool();
+         // console.log(req.file);
+         
+        // Validate file
+        if (!req.file) {
+          return res.status(400).send("No File Uploaded");
+        }
     
-}
+        // Read the Excel file
+        const filePath = req.file.path;
+        const workbook = xlsx.readFile(filePath);
+        const sheetName = workbook.SheetNames[0]; // Read the first sheet
+        const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+         
+      //   console.log(filePath);
+      //   console.log(workbook);
+      //   console.log(sheetName);
+      //   console.log("Excel Data:", data);
+    
+        // Insert data into SQL Server
+      //   await insertIntoDatabase(data);
+    
+        res.status(200).json(data);
+      } catch (error) {
+        console.error("Error:", error.message);
+        res.status(500).send("An error occurred.");
+      } 
+   }
 
 
 export {masterTables,getSchema,uploadExcel}
