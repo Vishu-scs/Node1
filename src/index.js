@@ -2,11 +2,11 @@ import express from "express"
 import 'dotenv/config'
 import {connectDB} from "./db/db.js"
 import {app}  from "./app.js"
-
+const PORT = 3000
 connectDB()
 .then(()=>{
-    app.listen(3000,()=>{
-        console.log(`Server is runnning at PORT: 3000`)
+    app.listen(PORT,()=>{
+        console.log(`Server is runnning at PORT: ${PORT}`)
     })
 })
 .catch((err)=>{
