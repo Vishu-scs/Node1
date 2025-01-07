@@ -1,7 +1,8 @@
 import xlsx from 'xlsx'
 import { getPool } from '../db/db.js'
 import sql from 'mssql'
-import { excelDateToJSDate } from '../utils/exceldateConvert.js'   
+import { dataFormat} from '../utils/dataFormat.js'   
+import fs from 'fs'
 
 
 let data= []  //Globally Declared -> Used in "uploadExcel" and "insertData"
@@ -31,12 +32,16 @@ const getSchema = async(req,res)=>{
 }
 const uploadExcel = async(req,res)=>{
    try {
-         // const pool = await getPool();
+         const pool = await getPool();
          // console.log(req.file);
-         
+
+         const{tableName} = req.body
         // Validate file
         if (!req.file) {
           return res.status(400).send("No File Uploaded");
+        }
+        if (!tableName) {
+          return res.status(400).send("Table name is required to be passed in the body.");
         }
     
         // Read the Excel file
@@ -44,41 +49,43 @@ const uploadExcel = async(req,res)=>{
         const workbook = xlsx.readFile(filePath);
         const sheetName = workbook.SheetNames[0]; // Read the first sheet
          data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);   //declared Globally -> to be used in insertdata
+         console.log("before: ",data);
          
-      //   console.log(filePath);
-      //   console.log(workbook);
-      //   console.log(sheetName);
-        console.log("Excel Data:", data);
+          if(tableName=='Brand_master'||tableName=='Dealer_master'||tableName=='Location_master'||tableName=='Supplier_master'||tableName=='WareHouse_master'||tableName=='Department_master'||tableName=='Designation_master'||tableName=='ProductType_master'||tableName=='City_master'||tableName=='Pincode_master')
+          {data =await dataFormat(data,tableName);}
          
-
-      // data.forEach(item => {
-      //    if(item.Addedon){
-      //    item.Addedon = excelDateToJSDate(item.Addedon); // Convert and update
-      //           }});
-
-          // Insert data into SQL Server
-         //   await insertIntoDatabase(data);
-    
-        res.status(200).json(data);
+        
+          console.log("Excel Data:", data);
+              // console.log(filePath);
+              
+          // Insert data into SQL Server  
+          await insertData(data,tableName,res);
+           
+          //  res.status(200).json({"Data Uploaded SuccessFully":data});
+          fs.unlinkSync(filePath)
       } catch (error) {
         console.error("Error:", error.message);
-        res.status(500).send("An error occurred.");
+        res.status(500).json({"An error occurred.":error.message});
       } 
 }
-const insertData = async(req, res)=>{
+const insertData = async(dataInsert,tableName,res)=>{
+  const pool = await getPool();
+  // const transaction = new sql.Transaction()
    try {
-      const pool = await getPool();
-  
-      let dataInsert = data;
-      // console.log("Accessing data: ",dataInsert);
 
+      // console.log("transaction",transaction);
+      
+        // await transaction.begin()
+        // console.log("Transaction State:", transaction);
+
+        // console.log(transaction.begin());
+        
       // Validate the uploaded data
       if (!dataInsert || !Array.isArray(dataInsert) || dataInsert.length === 0) {
-        return res
-          .status(500) 
-          .send("Something went wrong fetching data from the uploaded file. Please upload the Excel file again.");
+        return res.status(400) 
+          .send("Data not found. Please upload the Excel file again.");
       }
-      const addedBy = 1;
+      const addedBy = 2;
       
       // Convert current date to a number representing days since 1900-01-01 (Excel-like format)
       const currentDate = Math.floor((new Date() - new Date('1900-01-01')) / (1000 * 60 * 60 * 24));   //getting current date in serial
@@ -94,17 +101,8 @@ const insertData = async(req, res)=>{
         Addedon: date,
         status: 1
       }));
-      
-      // dataInsert.forEach(item => {
-      //    if(item.Addedon){
-      //       item.Addedon = excelDateToJSDate(item.Addedon); // Convert and update
-      //    }});
-         // console.log(dataInsert);
-      // Validate table name
-      const { tableName } = req.body;
-      if (!tableName) {
-        return res.status(400).send("Table name is required to be passed in the body.");
-      }
+
+
       console.log("Table name:", tableName);
   
       // Loop through the data and insert into SQL Server
@@ -125,25 +123,29 @@ const insertData = async(req, res)=>{
   
         await request.query(query);
       }
-  
+      // await transaction.commit()
+      // console.log(transaction.commit());
+      
+      console.log(`Data Inserted`,dataInsert);
+      
       res.status(201).json({message:"Data inserted successfully!",dataInsert});
-      dataInsert=[]
+      // dataInsert=[]
       // console.log("Data inserted successfully!",dataInsert);
     } catch (err) {
+      // if (transaction._aborted) {
+      //   console.error("Transaction was already aborted.");
+      // } else {
+      //   console.log("Rolling back transaction...");
+      //   await transaction.rollback(); // Rollback the transaction on error
+      // }
+  
+      
       console.error("Database Error:", err.message);
-  
-      if (err.message.includes("Conversion failed")) {
-        return res
-          .status(400)
-          .send(
-            "Data type mismatch: Ensure that the data from the uploaded file matches the table's expected column types."
-          );
-      }
-  
-      res.status(500).send("An error occurred while inserting data.");
+      return res.status(500).send(err.message)
+
     }
  
 }
 
 
-export {masterTables,getSchema,uploadExcel,insertData}
+export {masterTables,getSchema,uploadExcel}
