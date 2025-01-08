@@ -10,7 +10,6 @@ const router = Router()
 router.route('/getmasters').get(masterTables)
 router.route('/getschema').post(getSchema)
 router.route('/upload').post(upload.single('file'),uploadExcel);
-s
 // router.route('/insert').post(insertData)
 
 

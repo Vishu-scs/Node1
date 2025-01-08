@@ -1,7 +1,6 @@
 import { getPool } from "../db/db.js";
 const dataFormat = async(data,tableName)=>{
-//   console.log(data)
-//   console.log(tableName);
+
 try{
 if(tableName=='Brand_master'){
         const pool = await getPool();
@@ -11,6 +10,7 @@ if(tableName=='Brand_master'){
           acc[row.Industry.toLowerCase()] = row.IndustryID;
           return acc;
         }, {});
+        // console.log(industryMapping);
         
         
          // Transform data
@@ -92,7 +92,7 @@ if(tableName=='ProductType_master'){
 if(tableName=='City_master'){
         const pool = await getPool();
         // Fetch industries from the database
-        const result = await pool.query('SELECT State, StateID FROM State_master');
+        const result = await pool.query('SELECT State, stateid FROM State_master');
         // console.log(result.recordset);
         
         // Map states to their respective StateIDs
@@ -101,15 +101,17 @@ if(tableName=='City_master'){
             return acc;
         }, {});
         // console.log(stateMapping);
+        // console.log("data ",data);
         
         // Transform input data
         const processedData = data.map(item => ({
             City: item.City,
-            stateid: stateMapping[item.State] || null, // Map State to StateID or set to null
+            stateid: stateMapping[item.state] || null // Map State to StateID or set to null
+            
         }));
 
         // Log processed data for debugging (optional)
-        // console.log("Processed Data:", processedData);
+        console.log("Processed Data:", processedData);
 
         // Return transformed data for further use
         return processedData;
@@ -174,49 +176,183 @@ if(tableName=='Location_master'){
         const dealerResult = await pool.query('SELECT DealerID, Dealer FROM Dealer_master');
         const locationTypeResult = await pool.query('SELECT LocationTypeID, LocationType FROM LocationType_master');
         const cityResult = await pool.query('SELECT CityID,City FROM City_master');
-        const stateResult = await pool.query('SELECT StateID, State FROM State_master');
-        const pincodeResult = await pool.query('SELECT PincodeID, Pincode FROM Pincode_master');
+        const stateResult = await pool.query('SELECT stateid, State FROM State_master');
+        const pincodeResult = await pool.query('SELECT pincodeid, pincode FROM Pincode_master');
         
-    
-        // Create mappings
+        //  mappings
         const DealerMapping = dealerResult.recordset.reduce((acc, row) => {
           acc[row.Dealer] = row.DealerID;
           return acc;
         }, {});
-    
+        // console.log(DealerMapping);
+        
         const LocationTypeMapping = locationTypeResult.recordset.reduce((acc, row) => {
-          acc[row.LocationType] = row.LocationTypeID;
+          acc[row.LocationType.toLowerCase()] = row.LocationTypeID;
           return acc;
         }, {});
+        // console.log("Location Type: ",LocationTypeMapping);
+        
         const StateMapping = stateResult.recordset.reduce((acc, row) => {
-          acc[row.state] = row.stateid;
+          acc[row.State] = row.stateid;
           return acc;
         }, {});
+        // console.log("State: ",StateMapping);
+        
         const CityMapping = cityResult.recordset.reduce((acc, row) => {
           acc[row.City] = row.CityID;
           return acc;
         }, {});
+        // console.log(CityMapping);
+        
         const PincodeMapping = pincodeResult.recordset.reduce((acc, row) => {
           acc[row.pincode] = row.pincodeid;
           return acc;
         }, {});
+        // console.log("Pincode:",PincodeMapping);
+        
     
         // Transform and join data in-memory
         const processedData = data.map((item) => ({
-          Dealerid:DealerMapping[item.Dealer.toLowerCase()] || null,
+          Dealerid:DealerMapping[item.Dealer] || null,
           Location : item.Location,
-          LocationTypeid:LocationTypeMapping[item.LocationType] || null,
+          LocationTypeid:LocationTypeMapping[item.LocationType?.toLowerCase()] || null,
           Cityid:CityMapping[item.City] || null,
-          Stateid:StateMapping[item.State] || null,
-          pincodeid:PincodeMapping[item.pincode] || null,
+          stateid:StateMapping[item.State?.trim()] || null,
+          pincodeid:PincodeMapping[String(item.Pincode)?.trim()] || null
           
         }));
     
-        // console.log("Processed Data with Joins:", processedData);
+        // console.log("Processed Data", processedData);
     
         // You can now use `processedData` to insert into the target table or process further
         return processedData;
 }
+if(tableName=='warehouse_master'){
+    const pool = await getPool()
+
+        // Fetch data from multiple tables
+        const brandResult = await pool.query('SELECT BrandID, Brand FROM Brand_master');
+        const locationResult = await pool.query('SELECT Locationid, Location FROM Location_master');
+        const cityResult = await pool.query('SELECT CityID,City FROM City_master');
+        const stateResult = await pool.query('SELECT stateid, State FROM State_master');
+        const pincodeResult = await pool.query('SELECT pincodeid, pincode FROM Pincode_master');
+        // console.log("brand: ",brandResult.recordset);
+ 
+        const BrandMapping = brandResult.recordset.reduce((acc, row) => {
+          acc[row.Brand.toLowerCase()] = row.BrandID;
+          return acc;
+        }, {});
+        // console.log(BrandMapping);
+
+        const LocationMapping = locationResult.recordset.reduce((acc, row) => {
+          acc[row.Location] = row.Locationid;
+          return acc;
+        }, {});
+        // console.log("Location Type: ",LocationTypeMapping);
+        
+        const StateMapping = stateResult.recordset.reduce((acc, row) => {
+          acc[row.State] = row.stateid;
+          return acc;
+        }, {});
+        // console.log("State: ",StateMapping);
+        
+        const CityMapping = cityResult.recordset.reduce((acc, row) => {
+          acc[row.City] = row.CityID;
+          return acc;
+        }, {});
+        // console.log(CityMapping);
+        
+        const PincodeMapping = pincodeResult.recordset.reduce((acc, row) => {
+          acc[row.pincode] = row.pincodeid;
+          return acc;
+        }, {});
+        // console.log("Pincode:",PincodeMapping);
+        
+    
+        // Transform and join data in-memory
+        const processedData = data.map((item) => ({
+          brandid: BrandMapping[item.Brand.toLowerCase()] || null,
+          Warehouse : item.Warehouse,
+          Locationid:LocationMapping[item.Location] || null,
+          Cityid:CityMapping[item.City] || null,
+          stateid:StateMapping[item.State?.trim()] || null,
+          pincodeid:PincodeMapping[String(item.Pincode)?.trim()] || null 
+        }));
+    
+        // console.log("Processed Data", processedData);
+    
+        // You can now use `processedData` to insert into the target table or process further
+        return processedData;
+}
+if(tableName=='Supplier_master'){
+
+  const pool = await getPool();
+  const suppliercatgResult = await pool.query('select SupplierCategoryID , SupplierCategory from SupplierCategory_master')
+  const cityResult = await pool.query('SELECT CityID,City FROM City_master');
+  const stateResult = await pool.query('SELECT stateid, State FROM State_master');
+  const pincodeResult = await pool.query('SELECT pincodeid, pincode FROM Pincode_master');
+
+  const SuppliercatgMapping = suppliercatgResult.recordset.reduce((acc, row) => {
+    acc[row.SupplierCategory] = row.SupplierCategoryID;
+    return acc;
+  }, {});
+  // console.log(SuppliercatgMapping);
+  
+  const StateMapping = stateResult.recordset.reduce((acc, row) => {
+    acc[row.State] = row.stateid;
+    return acc;
+  }, {});
+  // console.log("State: ",StateMapping);
+  
+  const CityMapping = cityResult.recordset.reduce((acc, row) => {
+    acc[row.City] = row.CityID;
+    return acc;
+  }, {});
+  // console.log(CityMapping);
+  
+  const PincodeMapping = pincodeResult.recordset.reduce((acc, row) => {
+    acc[row.pincode] = row.pincodeid;
+    return acc;
+  }, {});
+  // console.log("Pincode:",PincodeMapping);
+  const processedData = data.map((item) => ({
+    Supplier : item.Supplier,
+    SupplierCategoryID:SuppliercatgMapping[item.SupplierCategory] || null,
+    Cityid:CityMapping[item.City] || null,
+    stateid:StateMapping[item.State?.trim()] || null,
+    pincodeid:PincodeMapping[String(item.Pincode)?.trim()] || null 
+  }));
+  // console.log("Processed Data", processedData);
+  return processedData
+
+}
+if(tableName=='SupplierMapping_master'){
+  const pool = await getPool();
+  
+  const locationResult = await pool.query('SELECT Locationid, Location FROM Location_master');
+  const supplierResult = await pool.query('SELECT Supplierid, Supplier FROM Supplier_master');
+
+  const LocationMapping = locationResult.recordset.reduce((acc, row) => {
+    acc[row.Location] = row.Locationid;
+    return acc;
+  }, {});
+    console.log(LocationMapping);
+    
+  const SupplierMapping = supplierResult.recordset.reduce((acc, row) => {
+    acc[row.Supplier] = row.Supplierid;
+    return acc;
+  }, {});
+  console.log(SupplierMapping);
+
+  const processedData = data.map((item) => ({
+    Supplierid:SupplierMapping[item.Supplier] || null,
+    Locationid:LocationMapping[item.Location] || null
+  }));
+    console.log("Processed Data", processedData);
+  return processedData;
+      
+}
+
     } catch (error) {
       console.error("Error processing data:", error.message);
       throw error;
